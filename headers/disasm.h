@@ -1,12 +1,13 @@
+#pragma once
 #include <stdint.h>
-typedef enum Reg { na, ax, bx, cx, dx, al, bl, cl, dl, ah, bh, ch, dh, si, di, bp, sp, NUM_REGS } Reg;
+typedef enum Reg { ax, bx, cx, dx, al, bl, cl, dl, ah, bh, ch, dh, si, di, bp, sp, NUM_REGS, na } Reg;
 typedef enum SegReg { ds, es, ss, cs, fs, gs, NUM_SEGREGS } SegReg;
-typedef enum OperandType { REG, SEGREG, REGHL, SEGHL, ADDRESS, IMM, REL } OperandType;
+typedef enum OperandType { UNUSED, REG, SEGREG, REGHL, SEGHL, ADDRESS, IMM, REL } OperandType;
 typedef enum InsOpcode {
     AAA,   AAD,   AAM,   AAS,   ADC,   ADD,   AND,
     CALL,  CBW,   CLC,   CLD,   CLI,   CMC,   CMP,
     CMPSB, CMPSW, CWD,   DAA,   DAS,   DEC,   DIV,
-    HLT,   IDIV,  IMUL,  IN,    INC,   INT,   INTO,
+    HLT,   IDIV,  IMUL,  IN,    INC,   INT,   INTO, INT3,
     IRET,  JA,    JAE,   JB,    JBE,   JC,    JCXZ,
     JE,    JG,    JGE,   JL,    JLE,   JMP,   JNA,
     JNAE,  JNB,   JNBE,  JNC,   JNE,   JNG,   JNGE,
@@ -18,7 +19,8 @@ typedef enum InsOpcode {
     PUSH,  PUSHA, PUSHF, RCL,   RCR,   RET,   RETF,
     ROL,   ROR,   SAHF,  SAL,   SAR,   SBB,   SCASB,
     SCASW, SHL,   SHR,   STC,   STD,   STI,   STOSB,
-    STOSW, SUB,   TEST,  XCHG,  XLATB, XOR
+    STOSW, SUB,   TEST,  XCHG,  XLATB, XOR,
+    NUM_OPCODES, BADOPCODE
 } InsOpcode;
 typedef struct InsOperand {
     OperandType type;
@@ -26,6 +28,7 @@ typedef struct InsOperand {
     Reg r2;
     SegReg sr;
     uint32_t im;
+    uint8_t scale;
 } InsOperand;
 typedef struct InsDecode {
     InsOperand src;
@@ -33,3 +36,5 @@ typedef struct InsDecode {
     InsOperand dst;
     InsOpcode type;
 } InsDecode;
+InsDecode disassemble(uint8_t **code, uint32_t *address);
+void decodedToStr(char *buf, InsDecode *dec);
