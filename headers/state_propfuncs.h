@@ -1,5 +1,7 @@
 #include "expr.h"
 #include "instr.h"
+/* All functions here propagate states for individual opcodes.
+ */
 void propMOV(Expr* src, Expr* op2, Instr* ins);
 void propADD(Expr* src, Expr* op2, Instr* ins);
 void propSUB(Expr* src, Expr* op2, Instr* ins);

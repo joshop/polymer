@@ -7,11 +7,18 @@ DEFINE_VECTOR(Expr)
 typedef struct Instr Instr;
 typedef Expr* Expr_;
 DEFINE_VECTOR(Expr_)
+/* The state of register allocation at a given point.
+ *  regs[r] holds the expression located in register r,
+ *  stack.data[i] holds the expression on the ith stack position.
+ */
 typedef struct State {
     Expr *regs[NUM_REGS];
     // TODO: segregs, and flags
     Vector(Expr_) stack;
 } State;
+// Computes the effects of the instruction ins on prev_state, and updates ins->state.
 void propagateState(State *prev_state, Instr *ins);
+// Destroys a state.
 void destroyState(State *old);
+// Modifies state and emit due to the effects of storing expr in the operand op.
 void stateStore(State *state, InsOperand op, Expr *expr, Emit *emit);
