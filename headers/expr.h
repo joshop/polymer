@@ -23,7 +23,7 @@ typedef struct ExUn {
     Expr *op;
     UnType typ;
 } ExUn;
-typedef enum ExprClass { ATOM, BIN, UN } ExprClass;
+typedef enum ExprClass { ATOM, BIN, UN, UNINIT } ExprClass;
 typedef struct Expr {
     Object obj;
     ExprClass typ;
@@ -40,4 +40,7 @@ Expr *createAtomLocal(int32_t val);
 Expr *createAtomConst(int32_t val);
 Expr *createExprUn(Expr *op, UnType typ);
 Expr *createExprBin(Expr *left, BinType typ, Expr *right);
+Expr *createExprUninit();
 void destroyExpr(Object *old);
+void exprToStr(char *buf, Expr *expr);
+Expr *calcEffAddress(Expr *expr);

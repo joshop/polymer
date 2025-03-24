@@ -8,7 +8,7 @@ const Reg MODRM_REGS8[] = {al, cl, dl, bl, ah, ch, dh, bh};
 const Reg MODRM_REGS16[] = {ax, cx, dx, bx, sp, bp, si, di};
 const Reg MODRM_RM1[] = {bx, bx, bp, bp, si, di, bp, bx};
 const Reg MODRM_RM2[] = {si, di, si, di, na, na, na, na};
-void modrmSib(uint8_t *code, Bits size, InsOperand *reg, InsOperand *rm) {
+size_t modrmSib(uint8_t *code, Bits size, InsOperand *reg, InsOperand *rm) {
     // TODO: SIB byte not implemented
     uint8_t modrm = code[0];
     if (size == b8) {
@@ -21,15 +21,18 @@ void modrmSib(uint8_t *code, Bits size, InsOperand *reg, InsOperand *rm) {
     rm->r = MODRM_RM1[(modrm & 0x07)];
     rm->r2 = MODRM_RM2[(modrm & 0x07)];
     rm->im = 0;
+    size_t extra = 0;
     switch (modrm >> 6) {
         case 0x0:
             if (rm->r == bp && rm->r2 == na) rm->r = na;
             break;
         case 0x1:
             rm->im = *(int8_t*)(code + 1);
+            extra = 1;
             break;
         case 0x2:
             rm->im = *(int16_t*)(code + 1);
+            extra = 2;
             break;
         case 0x3:
             if (size == b8) {
@@ -40,6 +43,7 @@ void modrmSib(uint8_t *code, Bits size, InsOperand *reg, InsOperand *rm) {
             rm->type = REG;
             break;
     }
+    return extra;
 }
 
 const char* REGNAMES[] = {"ax", "bx", "cx", "dx", "al", "bl", "cl", "dl", "ah", "bh", "ch", "dh", "si", "di", "bp", "sp"};
@@ -53,12 +57,20 @@ void operandToStr(char *buf, InsOperand *op) {
     } else if (op->type == IMM) {
         sprintf(buf, "0x%x", op->im);
     } else if (op->type == ADDRESS) {
+        char imbuf[16];
+        if (op->im > 0) {
+            sprintf(imbuf, "+0x%x", op->im);
+        } else if (op->im < 0) {
+            sprintf(imbuf, "-0x%x", -op->im);
+        } else {
+            *imbuf = 0;
+        }
         if (op->r == na) {
             sprintf(buf, "[0x%x]", op->im);
         } else if (op->r2 == na) {
-            sprintf(buf, "[%s+0x%x]", REGNAMES[op->r], op->im);
+            sprintf(buf, "[%s%s]", REGNAMES[op->r], imbuf);
         } else {
-            sprintf(buf, "[%s+%s+0x%x]", REGNAMES[op->r], REGNAMES[op->r2], op->im);
+            sprintf(buf, "[%s+%s%s]", REGNAMES[op->r], REGNAMES[op->r2], imbuf);
         }
     } else {
         sprintf(buf, "(unimpl)");
@@ -79,6 +91,7 @@ typedef struct OpcodeTableEntry {
     InsParamType param2; // 2nd operand
     InsParamType param3; // 1st operand - usually same as destination
     uint8_t size;
+    uint32_t flags;
 } OpcodeTableEntry;
 
 const OpcodeTableEntry OPCODE_TABLE[256] = {
@@ -209,22 +222,22 @@ const OpcodeTableEntry OPCODE_TABLE[256] = {
     {BADOPCODE},
 
     // 0x70
-    {JO,    REL8,   NONE,   SAME,   2},
-    {JNO,   REL8,   NONE,   SAME,   2},
-    {JB,    REL8,   NONE,   SAME,   2},
-    {JAE,   REL8,   NONE,   SAME,   2},
-    {JE,    REL8,   NONE,   SAME,   2},
-    {JNE,   REL8,   NONE,   SAME,   2},
-    {JBE,   REL8,   NONE,   SAME,   2},
-    {JA,    REL8,   NONE,   SAME,   2},
-    {JS,    REL8,   NONE,   SAME,   2},
-    {JNS,   REL8,   NONE,   SAME,   2},
-    {JP,    REL8,   NONE,   SAME,   2},
-    {JNP,   REL8,   NONE,   SAME,   2},
-    {JL,    REL8,   NONE,   SAME,   2},
-    {JGE,   REL8,   NONE,   SAME,   2},
-    {JLE,   REL8,   NONE,   SAME,   2},
-    {JG,    REL8,   NONE,   SAME,   2},
+    {JO,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JNO,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JB,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JAE,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JE,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JNE,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JBE,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JA,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JS,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JNS,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JP,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JNP,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JL,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JGE,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JLE,   REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
+    {JG,    REL8,   NONE,   SAME,   2, IFLAGS_JUMP},
 
     // 0x80
     {BADOPCODE},
@@ -301,16 +314,16 @@ const OpcodeTableEntry OPCODE_TABLE[256] = {
     // 0xC0
     {BADOPCODE},
     {BADOPCODE},
-    {RET,   IMMU16,NONE,    SAME,   3},
-    {RET,   NONE,  NONE,    SAME,   1},
+    {RET,   IMMU16,NONE,    SAME,   3, IFLAGS_NONEXT},
+    {RET,   NONE,  NONE,    SAME,   1, IFLAGS_NONEXT},
     {LES,   REG16, RM16,    SAME,   2},
     {LDS,   REG16, RM16,    SAME,   2},
     {MOV,   RM8,   IMMU8,   SAME,   3},
     {MOV,   RM16,  IMMU16,  SAME,   4},
     {BADOPCODE},
     {BADOPCODE},
-    {RETF,  IMMU16,NONE,    SAME,   3},
-    {RETF,  NONE,  NONE,    SAME,   1},
+    {RETF,  IMMU16,NONE,    SAME,   3, IFLAGS_NONEXT},
+    {RETF,  NONE,  NONE,    SAME,   1, IFLAGS_NONEXT},
     {INT3,  NONE,  NONE,    SAME,   1},
     {INT,   IMMU8, NONE,    SAME,   2},
     {INTO,  NONE,  NONE,    SAME,   1},
@@ -335,18 +348,18 @@ const OpcodeTableEntry OPCODE_TABLE[256] = {
     {BADOPCODE},
 
     // 0xE0
-    {LOOPNE,REL8,   NONE,   SAME,  2},
-    {LOOPE, REL8,   NONE,   SAME,  2},
-    {LOOP,  REL8,   NONE,   SAME,  2},
-    {JCXZ,  REL8,   NONE,   SAME,  2},
+    {LOOPNE,REL8,   NONE,   SAME,  2, IFLAGS_JUMP},
+    {LOOPE, REL8,   NONE,   SAME,  2, IFLAGS_JUMP},
+    {LOOP,  REL8,   NONE,   SAME,  2, IFLAGS_JUMP},
+    {JCXZ,  REL8,   NONE,   SAME,  2, IFLAGS_JUMP},
     {IN,    REGAL,  IMMU8,  SAME,  2},
     {IN,    REGAX,  IMMU8,  SAME,  2},
     {OUT,   IMMU8,  REGAL,  SAME,  2},
     {OUT,   IMMU8,  REGAX,  SAME,  2},
     {CALL,  REL16,  NONE,   SAME,  3},
-    {JMP,   REL16,  NONE,   SAME,  3},
-    {JMP,   IMM16,  NONE,   SAME,  3},
-    {JMP,   REL8,   NONE,   SAME,  2},
+    {JMP,   REL16,  NONE,   SAME,  3, IFLAGS_JUMP | IFLAGS_NONEXT},
+    {JMP,   IMM16,  NONE,   SAME,  3, IFLAGS_JUMP | IFLAGS_NONEXT},
+    {JMP,   REL8,   NONE,   SAME,  2, IFLAGS_JUMP | IFLAGS_NONEXT},
     {IN,    REGAL,  REGDX,  SAME,  1},
     {IN,    REGAX,  REGDX,  SAME,  1},
     {OUT,   REGDX,  REGAL,  SAME,  1},
@@ -471,10 +484,19 @@ void decodedToStr(char *buf, InsDecode *dec) {
     operandToStr(src, &dec->src);
     operandToStr(dst, &dec->dst);
     operandToStr(op2, &dec->op2);
-    sprintf(buf, "%s %s, %s, %s", OPCODENAMES[dec->type], dst, op2, src);
+    if (*op2 && OPCODE_TABLE[dec->type].param3 != SAME) {
+        sprintf(buf, "%s\t%s, %s, %s", OPCODENAMES[dec->type], dst, op2, src);
+    } else if (*src) {
+        sprintf(buf, "%s\t%s, %s", OPCODENAMES[dec->type], dst, src);
+    } else if (*dst) {
+        sprintf(buf, "%s\t%s", OPCODENAMES[dec->type], dst);
+    } else {
+        sprintf(buf, "%s\t", OPCODENAMES[dec->type]);
+    }
+
 }
 
-InsDecode disassemble(uint8_t **code, uint32_t *address) {
+InsDecode disassembleSingle(uint8_t **code, uint32_t *address) {
     InsDecode ins;
     uint8_t opcode = *code[0];
     OpcodeTableEntry info = OPCODE_TABLE[opcode];
@@ -486,10 +508,11 @@ InsDecode disassemble(uint8_t **code, uint32_t *address) {
     }
     InsOperand rm16, reg16, rm8, reg8;
     modrmSib(*code + 1, b8, &reg8, &rm8);
-    modrmSib(*code + 1, b16, &reg16, &rm16);
+    size_t extra = modrmSib(*code + 1, b16, &reg16, &rm16);
     uint8_t *imm = *code + 1;
     if (info.param1 == REG8 || info.param1 == RM8 || info.param1 == REG16 || info.param1 == RM16) {
         imm++;
+        info.size += extra;
     }
     ins.dst = operandParam(info.param1, *address, imm, rm16, reg16, rm8, reg8);
     ins.src = operandParam(info.param2, *address, imm, rm16, reg16, rm8, reg8);
@@ -499,6 +522,7 @@ InsDecode disassemble(uint8_t **code, uint32_t *address) {
         ins.op2 = operandParam(info.param3, *address, imm, rm16, reg16, rm8, reg8);
     }
     ins.type = info.op;
+    ins.flags = info.flags;
     *code += info.size;
     *address += info.size;
     return ins;

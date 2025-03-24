@@ -1,4 +1,3 @@
-#pragma once
 #include <stdlib.h>
 typedef struct Object {
     size_t refcnt;
@@ -20,9 +19,8 @@ void addRef(Object* obj) {
 }
 
 void release(Object* obj) {
-    obj->refcnt--;
 
-    if (obj->refcnt == 0) {
+    if (obj->refcnt == 0 || --obj->refcnt == 0) {
         if (obj->destroy != NULL)
             obj->destroy(obj);
         free(obj);

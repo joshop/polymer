@@ -1,5 +1,8 @@
 #pragma once
 #include <stdint.h>
+typedef uint8_t bool_t;
+#define true 1
+#define false 0
 typedef enum Reg { ax, bx, cx, dx, al, bl, cl, dl, ah, bh, ch, dh, si, di, bp, sp, NUM_REGS, na } Reg;
 typedef enum SegReg { ds, es, ss, cs, fs, gs, NUM_SEGREGS } SegReg;
 typedef enum OperandType { UNUSED, REG, SEGREG, REGHL, SEGHL, ADDRESS, IMM, REL } OperandType;
@@ -35,6 +38,10 @@ typedef struct InsDecode {
     InsOperand op2;
     InsOperand dst;
     InsOpcode type;
+    uint32_t flags;
+    uint32_t component;
 } InsDecode;
-InsDecode disassemble(uint8_t **code, uint32_t *address);
+#define IFLAGS_JUMP 1
+#define IFLAGS_NONEXT 2
+InsDecode disassembleSingle(uint8_t **code, uint32_t *address);
 void decodedToStr(char *buf, InsDecode *dec);
