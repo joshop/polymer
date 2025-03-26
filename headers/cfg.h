@@ -15,7 +15,7 @@ typedef struct BBlock {
     struct BBlock *next;
     struct BBlock *alt;
     Instr jump;
-    Expr takeAlt;
+    Expr *takeAlt;
 } BBlock;
 DEFINE_VECTOR(BBlock)
 /* A function consisting of several basic blocks:
@@ -33,3 +33,5 @@ void destroyBBlock(BBlock *blk);
 size_t createBlocks(Vector(BBlock) *blocks, Instr *ins);
 // Propagates the state from blk->start into each instruction in blk->code.
 void propagateBlock(BBlock *blk);
+// Creates an expression representing whether a given jump is taken in the context of state.
+Expr *calcTakeAlt(State *state, InsOpcode jmp);

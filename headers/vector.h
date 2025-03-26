@@ -28,8 +28,8 @@
                              if ((vec).size > (vec).capacity / 2) VectorResize(vec, (vec).capacity * 2); }
 // Pushes an element el to the end of vec.
 #define VectorPush(vec, el) { (vec).data[(vec).size++] = el; VectorChkSize(vec) }
-// Pushes an uninitialized element to the end of vec.
-#define VectorPushBlank(vec) { (vec).size++; VectorChkSize(vec) }
+// Pushes a zero-filled element to the end of vec.
+#define VectorPushBlank(vec) { (vec).size++; memset(&(vec).data[(vec).size-1], 0, sizeof(*(vec).data)); VectorChkSize(vec) }
 // Pops an element from the end of vec into dst.
 #define VectorPop(vec, dst) { assert((vec).size); dst = (vec).data[--(vec).size]; VectorChkSize(vec) }
 // Removes element idx from vec.

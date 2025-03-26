@@ -5,6 +5,7 @@ typedef uint8_t bool_t;
 #define false 0
 // An x86 general-purpose register.
 typedef enum Reg { ax, bx, cx, dx, al, bl, cl, dl, ah, bh, ch, dh, si, di, bp, sp, NUM_REGS, na } Reg;
+
 // An x86 segment register.
 typedef enum SegReg { ds, es, ss, cs, fs, gs, NUM_SEGREGS } SegReg;
 /* The type of an x86 operand:

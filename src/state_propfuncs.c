@@ -1,6 +1,7 @@
 #include "../headers/state_propfuncs.h"
 #include "../headers/state.h"
 #include "../headers/expr.h"
+//#include <stdio.h>
 void propMOV(Expr* src, Expr* op2, Instr* ins) {
     stateStore(&ins->state, ins->decode.dst, src, &ins->emit);
 }
@@ -35,4 +36,33 @@ void propSHR(Expr* src, Expr* op2, Instr* ins) {
 void propLEA(Expr* src, Expr* op2, Instr* ins) {
     stateStore(&ins->state, ins->decode.dst,
                calcEffAddress(src), &ins->emit);
+}
+void propPUSH(Expr* src, Expr* op2, Instr* ins) {
+    VectorPushBlank(ins->state.stack);
+    ADDREF(src);
+    VectorLast(ins->state.stack) = src;
+}
+void propPOP(Expr* src, Expr* op2, Instr* ins) {
+    Expr *top;
+    VectorPop(ins->state.stack, top);
+    RELEASE(top);
+    stateStore(&ins->state, ins->decode.dst, top, &ins->emit);
+}
+void propINC(Expr* src, Expr* op2, Instr* ins) {
+    stateStore(&ins->state, ins->decode.dst,
+               createExprBin(op2, bADD, createAtomConst(1)), &ins->emit);
+}
+void propDEC(Expr* src, Expr* op2, Instr* ins) {
+    stateStore(&ins->state, ins->decode.dst,
+               createExprBin(op2, bSUB, createAtomConst(1)), &ins->emit);
+}
+void propCMP(Expr* src, Expr* op2, Instr* ins) {
+    ins->state.flagtype = CMPFLAGS;
+    ins->state.flagsleft = op2;
+    ins->state.flagsright = src;
+}
+void propTEST(Expr* src, Expr* op2, Instr* ins) {
+    ins->state.flagtype = TESTFLAGS;
+    ins->state.flagsleft = op2;
+    ins->state.flagsright = src;
 }

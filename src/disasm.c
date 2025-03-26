@@ -3,12 +3,11 @@
 
 typedef enum Bits { b8, b16, b32 } Bits;
 
-
-const Reg MODRM_REGS8[] = {al, cl, dl, bl, ah, ch, dh, bh};
-const Reg MODRM_REGS16[] = {ax, cx, dx, bx, sp, bp, si, di};
-const Reg MODRM_RM1[] = {bx, bx, bp, bp, si, di, bp, bx};
-const Reg MODRM_RM2[] = {si, di, si, di, na, na, na, na};
-size_t modrmSib(uint8_t *code, Bits size, InsOperand *reg, InsOperand *rm) {
+const Reg MODRM_REGS8[] = { al, cl, dl, bl, ah, ch, dh, bh };
+const Reg MODRM_REGS16[] = { ax, cx, dx, bx, sp, bp, si, di };
+const Reg MODRM_RM1[] = { bx, bx, bp, bp, si, di, bp, bx };
+const Reg MODRM_RM2[] = { si, di, si, di, na, na, na, na };
+size_t modrmSib(uint8_t* code, Bits size, InsOperand* reg, InsOperand* rm) {
     // TODO: SIB byte not implemented
     uint8_t modrm = code[0];
     if (size == b8) {
@@ -23,31 +22,32 @@ size_t modrmSib(uint8_t *code, Bits size, InsOperand *reg, InsOperand *rm) {
     rm->im = 0;
     size_t extra = 0;
     switch (modrm >> 6) {
-        case 0x0:
-            if (rm->r == bp && rm->r2 == na) rm->r = na;
-            break;
-        case 0x1:
-            rm->im = *(int8_t*)(code + 1);
-            extra = 1;
-            break;
-        case 0x2:
-            rm->im = *(int16_t*)(code + 1);
-            extra = 2;
-            break;
-        case 0x3:
-            if (size == b8) {
-                rm->r = MODRM_REGS8[(modrm & 0x07)];
-            } else {
-                rm->r = MODRM_REGS16[(modrm & 0x07)];
-            }
-            rm->type = REG;
-            break;
+    case 0x0:
+        if (rm->r == bp && rm->r2 == na)
+            rm->r = na;
+        break;
+    case 0x1:
+        rm->im = *(int8_t*)(code + 1);
+        extra = 1;
+        break;
+    case 0x2:
+        rm->im = *(int16_t*)(code + 1);
+        extra = 2;
+        break;
+    case 0x3:
+        if (size == b8) {
+            rm->r = MODRM_REGS8[(modrm & 0x07)];
+        } else {
+            rm->r = MODRM_REGS16[(modrm & 0x07)];
+        }
+        rm->type = REG;
+        break;
     }
     return extra;
 }
 
-const char* REGNAMES[] = {"ax", "bx", "cx", "dx", "al", "bl", "cl", "dl", "ah", "bh", "ch", "dh", "si", "di", "bp", "sp"};
-void operandToStr(char *buf, InsOperand *op) {
+const char* REGNAMES[] = { "ax", "bx", "cx", "dx", "al", "bl", "cl", "dl", "ah", "bh", "ch", "dh", "si", "di", "bp", "sp" };
+void operandToStr(char* buf, InsOperand* op) {
     if (op->type == UNUSED) {
         *buf = 0;
     } else if (op->type == REG) {
@@ -76,13 +76,41 @@ void operandToStr(char *buf, InsOperand *op) {
         sprintf(buf, "(unimpl)");
     }
 }
-typedef enum InsParamType { NONE, SAME, RM8, RM16, REG8, REG16, IMMU8, IMM8, IMM16, IMMU16, SREG,
-                            REGAX, REGBX, REGCX, REGDX,
-                            REGAL, REGBL, REGCL, REGDL,
-                            REGAH, REGBH, REGCH, REGDH,
-                            REGSI, REGDI, REGBP, REGSP,
-                            REL8, REL16, ADDR16, TODO,
-                            REGDS, REGES, REGSS, REGCS
+typedef enum InsParamType { NONE,
+    SAME,
+    RM8,
+    RM16,
+    REG8,
+    REG16,
+    IMMU8,
+    IMM8,
+    IMM16,
+    IMMU16,
+    SREG,
+    REGAX,
+    REGBX,
+    REGCX,
+    REGDX,
+    REGAL,
+    REGBL,
+    REGCL,
+    REGDL,
+    REGAH,
+    REGBH,
+    REGCH,
+    REGDH,
+    REGSI,
+    REGDI,
+    REGBP,
+    REGSP,
+    REL8,
+    REL16,
+    ADDR16,
+    TODO,
+    REGDS,
+    REGES,
+    REGSS,
+    REGCS
 } InsParamType;
 
 typedef struct OpcodeTableEntry {
@@ -384,74 +412,73 @@ const OpcodeTableEntry OPCODE_TABLE[256] = {
     {BADOPCODE},
 };
 
-InsOperand operandParam(InsParamType typ, uint32_t address, uint8_t *imm, InsOperand rm16, InsOperand reg16, InsOperand rm8, InsOperand reg8) {
+InsOperand operandParam(InsParamType typ, uint32_t address, uint8_t* imm, InsOperand rm16, InsOperand reg16, InsOperand rm8, InsOperand reg8) {
     InsOperand op;
     op.type = UNUSED;
     switch (typ) {
-        case RM8:
-            return rm8;
-        case RM16:
-            return rm16;
-        case REG8:
-            return reg8;
-        case REG16:
-            return reg16;
-        case IMMU8:
-            op.type = IMM;
-            op.im = *(uint8_t*)imm;
-            break;
-        case IMM8:
-            op.type = IMM;
-            op.im = *(int8_t*)imm;
-            break;
-        case IMM16:
-            op.type = IMM;
-            op.im = *(uint16_t*)imm;
-            break;
-        case IMMU16:
-            op.type = IMM;
-            op.im = *(int16_t*)imm;
-            break;
-        case SREG:
-            // TODO: handling SREG arguments
-            break;
-        case REGAX:
-        case REGBX:
-        case REGCX:
-        case REGDX:
-        case REGAL:
-        case REGBL:
-        case REGCL:
-        case REGDL:
-        case REGAH:
-        case REGBH:
-        case REGCH:
-        case REGDH:
-        case REGSI:
-        case REGDI:
-        case REGBP:
-        case REGSP:
-            op.type = REG;
-            op.r = typ - REGAX;
-            break;
-        case REL8:
-            op.type = IMM;
-            op.im = *(int8_t*)imm + address;
-            break;
-        case REL16:
-            op.type = IMM;
-            op.im = *(int16_t*)imm + address;
-            break;
-        case ADDR16:
-            op.type = ADDRESS;
-            op.r = na;
-            op.r2 = na;
-            op.im = *(int16_t*)imm;
-        default:
-            break;
+    case RM8:
+        return rm8;
+    case RM16:
+        return rm16;
+    case REG8:
+        return reg8;
+    case REG16:
+        return reg16;
+    case IMMU8:
+        op.type = IMM;
+        op.im = *(uint8_t*)imm;
+        break;
+    case IMM8:
+        op.type = IMM;
+        op.im = *(int8_t*)imm;
+        break;
+    case IMM16:
+        op.type = IMM;
+        op.im = *(uint16_t*)imm;
+        break;
+    case IMMU16:
+        op.type = IMM;
+        op.im = *(int16_t*)imm;
+        break;
+    case SREG:
+        // TODO: handling SREG arguments
+        break;
+    case REGAX:
+    case REGBX:
+    case REGCX:
+    case REGDX:
+    case REGAL:
+    case REGBL:
+    case REGCL:
+    case REGDL:
+    case REGAH:
+    case REGBH:
+    case REGCH:
+    case REGDH:
+    case REGSI:
+    case REGDI:
+    case REGBP:
+    case REGSP:
+        op.type = REG;
+        op.r = typ - REGAX;
+        break;
+    case REL8:
+        op.type = IMM;
+        op.im = *(int8_t*)imm + address;
+        break;
+    case REL16:
+        op.type = IMM;
+        op.im = *(int16_t*)imm + address;
+        break;
+    case ADDR16:
+        op.type = ADDRESS;
+        op.r = na;
+        op.r2 = na;
+        op.im = *(int16_t*)imm;
+    default:
+        break;
     }
     return op;
-
 }
 
 const char* OPCODENAMES[] = {
@@ -473,7 +500,7 @@ const char* OPCODENAMES[] = {
     "STOSW", "SUB",   "TEST",  "XCHG",  "XLATB", "XOR",
 };
 
-void decodedToStr(char *buf, InsDecode *dec) {
+void decodedToStr(char* buf, InsDecode* dec) {
     if (dec->type == BADOPCODE) {
         sprintf(buf, "(bad)");
         return;
@@ -485,18 +512,17 @@ void decodedToStr(char *buf, InsDecode *dec) {
     operandToStr(dst, &dec->dst);
     operandToStr(op2, &dec->op2);
     if (*op2 && OPCODE_TABLE[dec->type].param3 != SAME) {
-        sprintf(buf, "%s\t%s, %s, %s", OPCODENAMES[dec->type], dst, op2, src);
-    } else if (*src) {
-        sprintf(buf, "%s\t%s, %s", OPCODENAMES[dec->type], dst, src);
-    } else if (*dst) {
-        sprintf(buf, "%s\t%s", OPCODENAMES[dec->type], dst);
+        sprintf(buf, "%-6s\t%s, %s, %s", OPCODENAMES[dec->type], dst, op2, src);
+    } else if (*src && *dst) {
+        sprintf(buf, "%-6s\t%s, %s", OPCODENAMES[dec->type], dst, src);
+    } else if (*src || *dst) {
+        sprintf(buf, "%-6s\t%s", OPCODENAMES[dec->type], *src ? src : dst);
     } else {
-        sprintf(buf, "%s\t", OPCODENAMES[dec->type]);
+        sprintf(buf, "%-6s\t", OPCODENAMES[dec->type]);
     }
-
 }
 
-InsDecode disassembleSingle(uint8_t **code, uint32_t *address) {
+InsDecode disassembleSingle(uint8_t** code, uint32_t* address) {
     InsDecode ins;
     uint8_t opcode = *code[0];
     OpcodeTableEntry info = OPCODE_TABLE[opcode];
@@ -509,7 +535,7 @@ InsDecode disassembleSingle(uint8_t **code, uint32_t *address) {
     InsOperand rm16, reg16, rm8, reg8;
     modrmSib(*code + 1, b8, &reg8, &rm8);
     size_t extra = modrmSib(*code + 1, b16, &reg16, &rm16);
-    uint8_t *imm = *code + 1;
+    uint8_t* imm = *code + 1;
     if (info.param1 == REG8 || info.param1 == RM8 || info.param1 == REG16 || info.param1 == RM16) {
         imm++;
         info.size += extra;

@@ -2,6 +2,12 @@
 #include "../headers/state.h"
 #include "../headers/instr.h"
 #include "../headers/state_propfuncs.h"
+#include "../headers/simplify.h"
+
+const Reg FULLREGS[] = {na, na, na, na, ax, bx, cx, dx, ax, bx, cx, dx, na, na, na, na };
+const Reg HIGHREGS[NUM_REGS] = {ah, bh, ch, dh, na, na, na, na, na, na, na, na, na, na, na, na};
+const Reg LOWREGS[NUM_REGS] = {al, bl, cl, dl, na, na, na, na, na, na, na, na, na, na, na, na};
+
 Expr *expressSource(State *from_state, InsOperand op) {
     switch(op.type) {
         case UNUSED:
@@ -53,6 +59,23 @@ void stateStore(State *state, InsOperand op, Expr *expr, Emit *emit) {
             ADDREF(expr);
             RELEASE(state->regs[op.r]);
             state->regs[op.r] = expr;
+            if (FULLREGS[op.r] != na) {
+                Reg fullreg = FULLREGS[op.r];
+                Expr *fullexpr = createExprBin(state->regs[LOWREGS[fullreg]], bOR,
+                                               createExprBin(state->regs[HIGHREGS[fullreg]], bSHL, createAtomConst(8)));
+                ADDREF(fullexpr);
+                RELEASE(state->regs[fullreg]);
+                state->regs[fullreg] = fullexpr;
+            } else if (HIGHREGS[op.r] != na) {
+                Expr *highexpr = createExprBin(expr, bSHR, createAtomConst(8));
+                ADDREF(highexpr);
+                RELEASE(state->regs[HIGHREGS[op.r]]);
+                state->regs[HIGHREGS[op.r]] = highexpr;
+                Expr *lowexpr = createExprBin(expr, bAND, createAtomConst(0xFF));
+                ADDREF(lowexpr);
+                RELEASE(state->regs[LOWREGS[op.r]]);
+                state->regs[LOWREGS[op.r]] = lowexpr;
+            }
             break;
         case IMM:
             assert(0);
@@ -62,8 +85,8 @@ void stateStore(State *state, InsOperand op, Expr *expr, Emit *emit) {
             emit->dest = tmp;
             ADDREF(tmp);
             ADDREF(tmp);
-            emit->src = expr;
-            ADDREF(expr);
+            emit->src = simplifyExpr(expr);
+            ADDREF(emit->src);
 #ifdef DECOMPDEBUG
             exprToStr(buf, tmp);
             printf("%14s <=", buf);
@@ -79,8 +102,6 @@ void stateStore(State *state, InsOperand op, Expr *expr, Emit *emit) {
 
 extern const char* OPCODENAMES[];
 
-
-
 void (*const PROPFUNCS[NUM_OPCODES])(Expr*, Expr*, Instr*) = {
     [MOV] = propMOV,
     [ADD] = propADD,
@@ -90,7 +111,13 @@ void (*const PROPFUNCS[NUM_OPCODES])(Expr*, Expr*, Instr*) = {
     [XOR] = propXOR,
     [SHL] = propSHL,
     [SHR] = propSHR,
-    [LEA] = propLEA
+    [LEA] = propLEA,
+    [PUSH] = propPUSH,
+    [POP] = propPOP,
+    [INC] = propINC,
+    [DEC] = propDEC,
+    [CMP] = propCMP,
+    [TEST] = propTEST
 };
 
 void propagateState(State *prev_state, Instr *ins) {

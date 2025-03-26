@@ -1,4 +1,5 @@
 #include "../headers/cfg.h"
+#include <stdio.h>
 
 typedef BBlock** BBlockPlace;
 DEFINE_VECTOR(BBlockPlace)
@@ -12,7 +13,7 @@ void destroyBBlock(BBlock *blk) {
     VectorEachPtr(blk->code, destroyInstr);
     VectorDelete(blk->code);
     destroyState(&blk->start);
-    destroyExpr((Object*)&blk->takeAlt);
+    RELEASE(blk->takeAlt);
 }
 
 size_t createBlocks(Vector(BBlock) *blocks, Instr *ins) {
@@ -75,5 +76,71 @@ void propagateBlock(BBlock *blk) {
     for (size_t i = 0; i < blk->code.size; i++) {
         propagateState(last, &blk->code.data[i]);
         last = &blk->code.data[i].state;
+    }
+    blk->takeAlt = calcTakeAlt(last, blk->jump.decode.type);
+    ADDREF(blk->takeAlt);
+}
+Expr *calcTakeAlt(State *state, InsOpcode jmp) {
+    Expr *zf, *cf;
+    switch (state->flagtype) {
+        case CMPFLAGS:
+            zf = createExprBin(state->flagsleft, bEQ, state->flagsright);
+            cf = createExprBin(state->flagsleft, bLT, state->flagsright);
+            break;
+        case TESTFLAGS:
+            // TODO: test sets SF!
+            cf = createExprUninit();
+            zf = createExprBin(state->flagsleft, bAND, state->flagsright);
+        default:
+            return createExprUninit();
+    }
+
+    switch(jmp) {
+        case JC:
+            return cf;
+        case JNC:
+            return createExprUn(cf, uNOTL);
+        case JPE:
+        case JPO:
+        case JP:
+        case JNP:
+        case JO:
+        case JNO:
+            return createExprUninit();
+        case JCXZ:
+            return createExprBin(state->regs[cx], bEQ, createAtomConst(0));
+        case JMP:
+            return createAtomConst(1);
+        case JE:
+            return zf;
+        case JNE:
+            return createExprUn(zf, uNOTL);
+        // TODO: signed behavior
+        case JNBE:
+        case JNLE:
+        case JA:
+        case JG:
+            return createExprBin(createExprUn(zf, uNOTL), bANDL, createExprUn(cf, uNOTL));
+        case JNB:
+        case JNL:
+        case JAE:
+        case JGE:
+            return createExprUn(cf, uNOTL);
+        case JNAE:
+        case JNGE:
+        case JB:
+        case JL:
+            return cf;
+        case JNA:
+        case JNG:
+        case JBE:
+        case JLE:
+            return createExprBin(zf, bORL, cf);
+        case LOOP:
+        case LOOPNE:
+        case LOOPZ:
+            assert(0);
+        default:
+            return createAtomConst(0);
     }
 }

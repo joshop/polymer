@@ -10,3 +10,6 @@ typedef struct Emit {
 } Emit;
 // Destroys an emit.
 void destroyEmit(Emit *emit);
+// Represents an expression as a string, returning the end of the expression.
+char *stringifyExpr(char *buf, Expr *expr);
+char *stringifyEmit(char *buf, Emit *emit);

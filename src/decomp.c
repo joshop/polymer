@@ -10,6 +10,7 @@ void disassembleBlock(Vector(Instr) *decodes, uint8_t *code, uint32_t start_addr
     uint32_t curaddr = start_addr;
     for (uint8_t *curcode = code; curcode < code + block_size;) {
         Instr next;
+        memset(&next, 0, sizeof(Instr));
         next.addr = curaddr;
         InsDecode dec = disassembleSingle(&curcode, &curaddr);
         next.decode = dec;
